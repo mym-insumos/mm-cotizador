@@ -29,8 +29,8 @@ async function createMatch(req, res) {
     data: {
       player1Id:    req.user.id,
       stakeAmount:  stake,
-      timeControl,
-      incrementSeconds,
+      timeControl:  String(timeControl),
+      incrementSeconds: Number(incrementSeconds),
       commissionRate,
       status: 'WAITING_DEPOSIT',
     },
