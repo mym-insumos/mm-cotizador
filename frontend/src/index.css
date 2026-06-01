@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-chess-dark text-white font-sans;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-chess-gold text-chess-dark font-semibold px-6 py-2.5 rounded-lg
+           hover:bg-yellow-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-chess-accent text-white font-medium px-6 py-2.5 rounded-lg
+           hover:bg-blue-700 transition-colors disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply bg-chess-danger text-white font-medium px-6 py-2.5 rounded-lg
+           hover:bg-red-700 transition-colors;
+  }
+
+  .card {
+    @apply bg-chess-panel border border-chess-accent/30 rounded-xl p-6;
+  }
+
+  .input {
+    @apply w-full bg-chess-accent/20 border border-chess-accent/40 rounded-lg px-4 py-2.5
+           text-white placeholder-gray-400 focus:outline-none focus:border-chess-gold
+           focus:ring-1 focus:ring-chess-gold transition-colors;
+  }
+
+  .badge-kyc-pending   { @apply bg-yellow-900/40 text-yellow-400 text-xs px-2 py-1 rounded-full; }
+  .badge-kyc-verified  { @apply bg-green-900/40 text-green-400 text-xs px-2 py-1 rounded-full; }
+  .badge-kyc-rejected  { @apply bg-red-900/40 text-red-400 text-xs px-2 py-1 rounded-full; }
+  .badge-kyc-submitted { @apply bg-blue-900/40 text-blue-400 text-xs px-2 py-1 rounded-full; }
+
+  .badge-free         { @apply bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded-full; }
+  .badge-premium      { @apply bg-purple-900/50 text-purple-300 text-xs px-2 py-1 rounded-full; }
+  .badge-high-stakes  { @apply bg-yellow-900/50 text-chess-gold text-xs px-2 py-1 rounded-full; }
+}

@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum KYCStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+  HIGH_STAKES
+}
+
+enum MatchStatus {
+  WAITING_DEPOSIT
+  READY
+  ACTIVE
+  COMPLETED
+  DISPUTED
+  CANCELLED
+  VOID
+}
+
+enum MatchResult {
+  PLAYER1_WIN
+  PLAYER2_WIN
+  DRAW
+  DISPUTED
+  VOID
+}
+
+enum TournamentStatus {
+  REGISTRATION
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TournamentFormat {
+  SWISS
+  ROUND_ROBIN
+  SINGLE_ELIMINATION
+  DOUBLE_ELIMINATION
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  MATCH_STAKE
+  MATCH_WIN
+  MATCH_REFUND
+  TOURNAMENT_FEE
+  TOURNAMENT_PRIZE
+  SUBSCRIPTION
+  COMMISSION
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum UserRole {
+  PLAYER
+  ADMIN
+}
+
+model User {
+  id               String           @id @default(uuid())
+  email            String           @unique
+  username         String           @unique
+  passwordHash     String
+  role             UserRole         @default(PLAYER)
+  rating           Int              @default(1200)
+  balance          Decimal          @default(0) @db.Decimal(18, 2)
+  lockedBalance    Decimal          @default(0) @db.Decimal(18, 2)
+  kycStatus        KYCStatus        @default(PENDING)
+  subscriptionTier SubscriptionTier @default(FREE)
+  subscriptionEnd  DateTime?
+  lichessUsername  String?
+  chesscomUsername String?
+  country          String?
+  totalWins        Int              @default(0)
+  totalLosses      Int              @default(0)
+  totalDraws       Int              @default(0)
+  totalEarnings    Decimal          @default(0) @db.Decimal(18, 2)
+  isActive         Boolean          @default(true)
+  isBanned         Boolean          @default(false)
+  banReason        String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  kycProfile        KYCProfile?
+  matchesAsPlayer1  Match[]          @relation("Player1")
+  matchesAsPlayer2  Match[]          @relation("Player2")
+  wonMatches        Match[]          @relation("Winner")
+  transactions      Transaction[]
+  tournamentEntries TournamentParticipant[]
+  antiCheatFlags    AntiCheatAnalysis[]
+}
+
+model KYCProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  fullName        String
+  birthDate       DateTime
+  documentType    String
+  documentNumber  String
+  country         String
+  documentFrontUrl String?
+  documentBackUrl  String?
+  selfieUrl        String?
+  verificationData Json?
+  submittedAt     DateTime  @default(now())
+  verifiedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+}
+
+model Match {
+  id               String       @id @default(uuid())
+  player1Id        String
+  player2Id        String?
+  player1          User         @relation("Player1", fields: [player1Id], references: [id])
+  player2          User?        @relation("Player2", fields: [player2Id], references: [id])
+  timeControl      String
+  incrementSeconds Int          @default(0)
+  stakeAmount      Decimal      @db.Decimal(18, 2)
+  totalPool        Decimal      @default(0) @db.Decimal(18, 2)
+  commissionRate   Decimal      @default(0.05) @db.Decimal(5, 4)
+  commissionAmount Decimal      @default(0) @db.Decimal(18, 2)
+  payoutAmount     Decimal      @default(0) @db.Decimal(18, 2)
+  status           MatchStatus  @default(WAITING_DEPOSIT)
+  result           MatchResult?
+  winnerId         String?
+  winner           User?        @relation("Winner", fields: [winnerId], references: [id])
+  chessGameId      String?
+  chessGameUrl     String?
+  chessProvider    String?      @default("lichess")
+  player1Deposited Boolean      @default(false)
+  player2Deposited Boolean      @default(false)
+  disconnectCount  Int          @default(0)
+  lastPingAt       DateTime?
+  disputeReason    String?
+  disputeResolvedAt DateTime?
+  isPublic         Boolean      @default(true)
+  tournamentId     String?
+  tournament       Tournament?  @relation(fields: [tournamentId], references: [id])
+  antiCheatResult  AntiCheatAnalysis[]
+  transactions     Transaction[]
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model Tournament {
+  id                 String           @id @default(uuid())
+  name               String
+  description        String?
+  format             TournamentFormat @default(SWISS)
+  timeControl        String
+  incrementSeconds   Int              @default(0)
+  entryFee           Decimal          @db.Decimal(18, 2)
+  commissionRate     Decimal          @default(0.10) @db.Decimal(5, 4)
+  prizePool          Decimal          @default(0) @db.Decimal(18, 2)
+  maxPlayers         Int
+  minPlayers         Int              @default(4)
+  currentPlayers     Int              @default(0)
+  rounds             Int              @default(7)
+  currentRound       Int              @default(0)
+  status             TournamentStatus @default(REGISTRATION)
+  distributionConfig Json
+  minRating          Int?
+  maxRating          Int?
+  requiresKYC        Boolean          @default(true)
+  requiresPremium    Boolean          @default(false)
+  startDate          DateTime
+  endDate            DateTime?
+  participants       TournamentParticipant[]
+  matches            Match[]
+  transactions       Transaction[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model TournamentParticipant {
+  id           String     @id @default(uuid())
+  tournamentId String
+  userId       String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+  standing     Int?
+  points       Decimal    @default(0) @db.Decimal(5, 2)
+  wins         Int        @default(0)
+  losses       Int        @default(0)
+  draws        Int        @default(0)
+  prizeWon     Decimal    @default(0) @db.Decimal(18, 2)
+  registeredAt DateTime   @default(now())
+  disqualified Boolean    @default(false)
+
+  @@unique([tournamentId, userId])
+}
+
+model Transaction {
+  id           String            @id @default(uuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id])
+  type         TransactionType
+  amount       Decimal           @db.Decimal(18, 2)
+  status       TransactionStatus @default(PENDING)
+  matchId      String?
+  match        Match?            @relation(fields: [matchId], references: [id])
+  tournamentId String?
+  tournament   Tournament?       @relation(fields: [tournamentId], references: [id])
+  stripeId     String?
+  metadata     Json?
+  description  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model AntiCheatAnalysis {
+  id                String   @id @default(uuid())
+  matchId           String
+  match             Match    @relation(fields: [matchId], references: [id])
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  engineCorrelation Float
+  acplDeviation     Float?
+  moveAccuracy      Float?
+  suspiciousPatterns Json?
+  flagged           Boolean  @default(false)
+  autoVoided        Boolean  @default(false)
+  reviewedAt        DateTime?
+  reviewNotes       String?
+  analyzedAt        DateTime @default(now())
+}
